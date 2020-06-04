@@ -1,4 +1,4 @@
-from matplotlib.pyplot import plot,show,scatter,savefig,xlim,ylim
+from matplotlib.pyplot import plot,show,scatter,savefig,xlim,ylim,clf
 from math import hypot
 # UnionFind
 class UnionFind():
@@ -32,7 +32,8 @@ class UnionFind():
             self.nodes[small_root]=big_root
         return True
 
-
+def round(x:float):
+    return int(x+0.5)
 def read_points(input_file):
     points = []
     with open(input_file, "r") as f:
@@ -41,8 +42,10 @@ def read_points(input_file):
         for xy in lines[1:]:
             x,y = map(int,xy.split())
             points.append((x,y))
-        matrix = [[hypot(x1-x2, y1-y2) for x1,y1 in points] for x2,y2 in points]
-        # print(*matrix,sep="\n")
+        matrix = [[round(hypot(x1-x2, y1-y2)) for x1,y1 in points] for x2,y2 in points]
+        for m in matrix:
+            print(*m)
+            
     return matrix, points
 
 def get_initial_tour_DMST(edges:list, N:int):
@@ -81,17 +84,32 @@ def plot_graph(points:list, tour:list, file_name:str):
     Y2 = [Y[i] for i in tour]
     plot(X2,Y2)
 
-    # show()
     savefig(file_name)
+    clf()
+    # show()
 
-# def remove_edge(tour:list):
-#     last = 0
-#     visited = {0}
-#     result = []
-#     for cur in tour[1:]:
-#         result[]
+def remove_edge(tour:list):
+    visited = set()
+    result = []
+    for cur in tour:
+        if(cur in visited): continue
+        result.append(cur)
+        visited.add(cur)
+    result.append(tour[0])
+    return result
 
-#     tour[:] = result
+def two_opt(points:list, tour:list, matrix:list, obj_func_val:int, depth:int):
+    tour_length = len(tour)
+    for i in range(1,tour_length-1):
+        a,b = tour[i-1], tour[i]
+        for j in range(i+1, tour_length-1):
+            c,d = tour[j],tour[j+1]
+            val = obj_func_val - matrix[a][b] - matrix[c][d] + matrix[a][c] + matrix[b][d] #swap後の目的関数値
+            if(obj_func_val>val):
+                tour[i:j+1] = tour[i:j+1][::-1] #2辺swap
+                plot_graph(points, tour, "solution_depth{:0>2}.png".format(depth))
+                print("深さ:{}, 目的関数値:{}, 解:{}".format(depth, val, tour))
+                return two_opt(points, tour, matrix, val, depth + 1)
 
 def main():
     matrix, points = read_points("./in.txt")
@@ -100,14 +118,18 @@ def main():
 
     #----初期解生成----
     tour = get_initial_tour_DMST(edges,N)
-    
-    # sol_edge = [(tour[i-1],tour[i]) for i,_ in enumerate(tour)]
-    plot_graph(points, tour, "spaning_tree.png")
+    print("tour:",tour)
 
-    # sol_edge = remove_edge(tour)
+    # sol_edge = [(tour[i],tour[i+1]) for i,_ in enumerate(tour[:-1])]
+    plot_graph(points, tour, "spaning_tree.png")
+    
+    tour = remove_edge(tour)
     plot_graph(points, tour, "initial_solution.png")
 
     #----局所探索----
+    obj_func_val = sum([matrix[tour[i]][tour[i+1]] for i,_ in enumerate(tour[:-1])])
+    obj_func_val = two_opt(points, tour, matrix, obj_func_val, 0)
+
 
 if __name__ == "__main__":
     main()
